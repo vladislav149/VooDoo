@@ -70,14 +70,32 @@ function filter(author: string) {
     <VooErrors v-if="isError" />
     <div v-if="isNoPosts">Нет постов</div>
     <div v-else>
-      <ul class="grid grid-cols-posts gap-5">
+      <TransitionGroup
+        class="grid grid-cols-posts gap-5"
+        tag="ul"
+      >
         <li
           v-for="post in postsWithUserName"
           :key="post.id"
         >
           <VooPost :post="post" />
         </li>
-      </ul>
+      </TransitionGroup>
     </div>
   </div>
 </template>
+
+<style scoped>
+.v-move,
+.v-enter-active,
+.v-leave-active {
+  transition:
+    opacity 1s,
+    transform 1s;
+}
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+</style>
