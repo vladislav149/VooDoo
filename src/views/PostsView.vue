@@ -4,16 +4,26 @@ import VooSearch from '@/components/VooSearch.vue'
 import postsApi from '@/api/posts'
 import usersApi from '@/api/users'
 import type {PostWithUserName} from '@/types'
-import {computed, onMounted, ref, toRaw} from 'vue'
+import {computed, ref} from 'vue'
 
 const isLoading = ref(false)
 const isError = ref(false)
+const isNoPosts = computed(() => !isLoading.value && !isError.value && !filteredPosts.value.length)
 
-let originalPostsWithUserName: Array<PostWithUserName> = []
+const author = ref('')
 const postsWithUserName = ref<Array<PostWithUserName>>([])
-const isNoPosts = computed(
-  () => !isLoading.value && !isError.value && !postsWithUserName.value.length
-)
+
+const filteredPosts = computed(() => {
+  if (!author.value) {
+    return postsWithUserName.value
+  }
+
+  return postsWithUserName.value.filter(post =>
+    post.userName.toLocaleLowerCase().includes(author.value)
+  )
+})
+
+getData()
 
 async function getPosts() {
   const {data} = await postsApi.getPosts()
@@ -27,8 +37,6 @@ async function getUsers() {
 
 function getData() {
   isLoading.value = true
-  //комментарий для про ревьювиров
-  //посчитал, что посты и юзеры критические важные данные, поэтому обернул их в Promise.all
   Promise.all([getPosts(), getUsers()])
     .then(([postsData, usersData]) => {
       postsWithUserName.value = postsData.map(post => {
@@ -38,8 +46,6 @@ function getData() {
           userName: userData?.name || 'неизвестный автор'
         }
       })
-
-      originalPostsWithUserName = structuredClone(toRaw(postsWithUserName.value))
     })
     .catch(() => {
       isError.value = true
@@ -48,24 +54,11 @@ function getData() {
       isLoading.value = false
     })
 }
-
-onMounted(() => getData())
-
-function filter(author: string) {
-  if (!author) {
-    postsWithUserName.value = structuredClone(originalPostsWithUserName)
-    return
-  }
-
-  postsWithUserName.value = originalPostsWithUserName.filter(post =>
-    post.userName.toLocaleLowerCase().includes(author)
-  )
-}
 </script>
 
 <template>
   <div class="container mx-auto px-3">
-    <VooSearch @filter="filter" />
+    <VooSearch v-model="author" />
     <VooLoader v-if="isLoading" />
     <VooErrors v-if="isError" />
     <div v-if="isNoPosts">Нет постов</div>
@@ -75,7 +68,7 @@ function filter(author: string) {
         tag="ul"
       >
         <li
-          v-for="post in postsWithUserName"
+          v-for="post in filteredPosts"
           :key="post.id"
         >
           <VooPost :post="post" />
